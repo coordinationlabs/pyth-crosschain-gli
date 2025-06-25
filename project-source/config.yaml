@@ -1,0 +1,83 @@
+chains:
+  lightlink_pegasus:
+    geth_rpc_addr: https://replicator.pegasus.lightlink.io/rpc/v1
+    contract_addr: 0x8250f4aF4B972684F7b336503E2D6dFeDeB1487a
+    legacy_tx: true
+
+    # Keeper configuration for the chain
+    reveal_delay_blocks: 0
+    gas_limit: 500000
+
+    # Multiplier for the priority fee estimate, as a percentage (i.e., 100 = no change).
+    # Defaults to 100 if the field is omitted.
+    priority_fee_multiplier_pct: 100
+
+    escalation_policy:
+      # Pad the first callback transaction's gas estimate by 25%,
+      # then multiply each successive callback transaction's gas estimate by 10% until the cap is reached.
+      # All numbers are expressed as percentages where 100 = no change.
+      initial_gas_multiplier_pct: 125
+      gas_multiplier_pct: 110
+      gas_multiplier_cap_pct: 600
+
+      # Multiply successive callback transaction's fees by 10% until the cap is reached.
+      # All numbers are expressed as percentages where 100 = no change.
+      # (See also priority_fee_multiplier_pct above to generically adjust the priority fee estimates for the chain --
+      # adjusting that parameter will influence the fee of the first transaction, in addition to other things)
+      fee_multiplier_pct: 110
+      fee_multiplier_cap_pct: 200
+
+    min_keeper_balance: 100000000000000000
+
+    # Provider configuration
+    # How much to charge in fees
+    fee: 1500000000000000
+
+    # Set this temporarily to false if you have changed the fees and want to apply a new baseline fee.
+    sync_fee_only_on_register: true
+
+    # Configuration for dynamic fees under high gas prices. The keeper will set
+    # on-chain fees to make between [min_profit_pct, max_profit_pct] of the max callback
+    # cost in profit per transaction.
+    min_profit_pct: 0
+    target_profit_pct: 20
+    max_profit_pct: 100
+
+    # A list of block delays for processing blocks multiple times. Each number represents
+    # how many blocks to wait before processing. For example, [5, 10, 20] means process
+    # blocks after 5 blocks, then again after 10 blocks, and finally after 20 blocks.
+    block_delays: [5, 10, 20]
+
+provider:
+  uri: http://localhost:8080/
+  chain_length: 100000
+  chain_sample_interval: 10
+
+  # An ethereum wallet address and private key. Generate with `cast wallet new`
+  address: "0xfa4a4c05593A242e6F40a51fA6769b2a43AF1d1C"
+  private_key:
+    # For local development, you can hardcode the private key here
+    value: "0xc1c165ed1dad34e4c7c20e8552ba926f4a5a88f63ede93c3cee8e09d53ea2c1c"
+    # For production, you can store the private key in a file.
+    # file: provider-key.txt
+  # A 32 byte random value in hexadecimal
+  # Generate with `openssl rand -hex 32`
+  secret:
+    # For local development, you can hardcode the value here
+    value: "a5a4a90807662d53e77983ea99a61329c8e1b6a7155c6543b572023512e0e031"
+    # For production, you can store the private key in a file.
+    # file: secret.txt
+
+  # Set this to the address of your keeper wallet if you would like the keeper wallet to
+  # be able to withdraw fees from the contract.
+  fee_manager: "0xfa4a4c05593A242e6F40a51fA6769b2a43AF1d1C"
+keeper:
+  # An ethereum wallet address and private key for running the keeper service.
+  # This does not have to be the same key as the provider's key above.
+  # Generate with `cast wallet new`.
+  # The keeper private key can be omitted to run the webservice without the keeper.
+  private_key:
+    # For local development, you can hardcode the private key here
+    value: "0xad5b37e2a9b4058b40813f389f41b312ccb34f3a9e160a178985c575d31154a4"
+    # For production, you can store the private key in a file.
+    # file: keeper-key.txt 
