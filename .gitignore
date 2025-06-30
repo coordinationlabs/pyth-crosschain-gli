@@ -3,7 +3,6 @@ node_modules
 .idea
 .arcconfig
 *.iml
-bin
 target
 /mutagen.sh
 venv
