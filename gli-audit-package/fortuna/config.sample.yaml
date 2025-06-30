@@ -73,6 +73,11 @@ provider:
     # For production, you can store the private key in a file.
     # file: secret.txt
 
+  # When true, the server starts in a special mode for black-box testing.
+  # It disables all on-chain operations (like the keeper) and generates a new,
+  # local hash chain from the secret above. This is required for the audit.
+  local_audit: true
+
   # Set this to the address of your keeper wallet if you would like the keeper wallet to
   # be able to withdraw fees from the contract.
   fee_manager: 0xADDRESS
