@@ -26,3 +26,6 @@ __pycache__
 .cursorrules
 .corepack
 justfile
+gli-audit-package/random_numbers.txt
+gli-audit-package/audit_trail.txt
+ai-context/

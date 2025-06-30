@@ -118,7 +118,7 @@ pub async fn run(opts: &RunOptions) -> Result<()> {
         spawn(async move {
             loop {
                 let setup_result = setup_chain_and_run_keeper(
-                    provider_config.clone(),
+                    &provider_config,
                     &chain_id,
                     chain_config.clone(),
                     keeper_metrics.clone(),
@@ -168,7 +168,7 @@ pub async fn run(opts: &RunOptions) -> Result<()> {
 
 #[allow(clippy::too_many_arguments)]
 async fn setup_chain_and_run_keeper(
-    provider_config: ProviderConfig,
+    provider_config: &ProviderConfig,
     chain_id: &ChainId,
     chain_config: EthereumConfig,
     keeper_metrics: Arc<KeeperMetrics>,
@@ -179,9 +179,8 @@ async fn setup_chain_and_run_keeper(
     rpc_metrics: Arc<RpcMetrics>,
 ) -> Result<()> {
     let state = setup_chain_state(
-        &provider_config.address,
+        provider_config,
         secret_copy,
-        provider_config.chain_sample_interval,
         chain_id,
         &chain_config,
         rpc_metrics.clone(),
@@ -192,24 +191,25 @@ async fn setup_chain_and_run_keeper(
         chain_id.clone(),
         ApiBlockChainState::Initialized(state.clone()),
     );
-    if let Some(keeper_private_key) = keeper_private_key_option {
-        keeper::run_keeper_threads(
-            keeper_private_key,
-            chain_config,
-            state,
-            keeper_metrics.clone(),
-            history,
-            rpc_metrics.clone(),
-        )
-        .await?;
+    if !provider_config.local_audit {
+        if let Some(keeper_private_key) = keeper_private_key_option {
+            keeper::run_keeper_threads(
+                keeper_private_key,
+                chain_config,
+                state,
+                keeper_metrics.clone(),
+                history,
+                rpc_metrics.clone(),
+            )
+            .await?;
+        }
     }
     Ok(())
 }
 
 async fn setup_chain_state(
-    provider: &Address,
+    provider_config: &ProviderConfig,
     secret: &str,
-    chain_sample_interval: u64,
     chain_id: &ChainId,
     chain_config: &EthereumConfig,
     rpc_metrics: Arc<RpcMetrics>,
@@ -231,37 +231,57 @@ async fn setup_chain_state(
             .cmp(&c2.original_commitment_sequence_number)
     });
 
-    let provider_info = contract
-        .get_provider_info(*provider)
-        .call()
-        .await
-        .map_err(|e| anyhow!("Failed to get provider info: {}", e))?;
-    let latest_metadata = bincode::deserialize::<CommitmentMetadata>(
-        &provider_info.commitment_metadata,
-    )
-    .map_err(|e| {
-        anyhow!(
-            "Chain: {} - Failed to deserialize commitment metadata: {}",
-            &chain_id,
-            e
-        )
-    })?;
+    let original_commitment_sequence_number;
+    let original_commitment;
 
-    let last_prior_commitment = provider_commitments.last();
-    if last_prior_commitment.is_some()
-        && last_prior_commitment
-            .unwrap()
-            .original_commitment_sequence_number
-            >= provider_info.original_commitment_sequence_number
-    {
-        return Err(anyhow!("The current hash chain for chain id {} has configured commitments for sequence numbers greater than the current on-chain sequence number. Are the commitments configured correctly?", &chain_id));
+    if !provider_config.local_audit {
+        let provider_info = contract
+            .get_provider_info(provider_config.address)
+            .call()
+            .await
+            .map_err(|e| anyhow!("Failed to get provider info: {}", e))?;
+
+        if !provider_info.commitment_metadata.is_empty() {
+            let latest_metadata =
+                bincode::deserialize::<CommitmentMetadata>(&provider_info.commitment_metadata)
+                    .map_err(|e| {
+                        anyhow!(
+                            "Chain: {} - Failed to deserialize commitment metadata: {}",
+                            &chain_id,
+                            e
+                        )
+                    })?;
+
+            let last_prior_commitment = provider_commitments.last();
+            if last_prior_commitment.is_some()
+                && last_prior_commitment
+                    .unwrap()
+                    .original_commitment_sequence_number
+                    >= provider_info.original_commitment_sequence_number
+            {
+                return Err(anyhow!("The current hash chain for chain id {} has configured commitments for sequence numbers greater than the current on-chain sequence number. Are the commitments configured correctly?", &chain_id));
+            }
+
+            provider_commitments.push(Commitment {
+                seed: latest_metadata.seed,
+                chain_length: latest_metadata.chain_length,
+                original_commitment_sequence_number: provider_info
+                    .original_commitment_sequence_number,
+            });
+        }
+        original_commitment_sequence_number = provider_info.original_commitment_sequence_number;
+        original_commitment = provider_info.original_commitment;
+    } else {
+        use ethers::utils::keccak256;
+        let trimmed_secret = secret.strip_prefix("0x").unwrap_or(secret);
+        provider_commitments.push(Commitment {
+            seed: keccak256(trimmed_secret.as_bytes()),
+            chain_length: provider_config.chain_length,
+            original_commitment_sequence_number: 0,
+        });
+        original_commitment_sequence_number = 0;
+        original_commitment = [0; 32];
     }
-
-    provider_commitments.push(Commitment {
-        seed: latest_metadata.seed,
-        chain_length: latest_metadata.chain_length,
-        original_commitment_sequence_number: provider_info.original_commitment_sequence_number,
-    });
 
     // TODO: we may want to load the hash chain in a lazy/fault-tolerant way. If there are many blockchains,
     // then it's more likely that some RPC fails. We should tolerate these faults and generate the hash chain
@@ -274,14 +294,15 @@ async fn setup_chain_state(
         let offset = commitment.original_commitment_sequence_number.try_into()?;
         offsets.push(offset);
 
+        let trimmed_secret = secret.strip_prefix("0x").unwrap_or(secret);
         let pebble_hash_chain = PebbleHashChain::from_config_async(
-            secret,
+            trimmed_secret,
             chain_id,
-            provider,
+            &provider_config.address,
             &chain_config.contract_addr,
             &commitment.seed,
             commitment.chain_length,
-            chain_sample_interval,
+            provider_config.chain_sample_interval,
         )
         .await
         .map_err(|e| anyhow!("Failed to create hash chain: {}", e))?;
@@ -290,19 +311,19 @@ async fn setup_chain_state(
 
     let chain_state = HashChainState::new(offsets, hash_chains)?;
 
-    if chain_state.reveal(provider_info.original_commitment_sequence_number)?
-        != provider_info.original_commitment
-    {
-        return Err(anyhow!("The root of the generated hash chain for chain id {} does not match the commitment. Are the secret and chain length configured correctly?", &chain_id));
-    } else {
-        tracing::info!("Root of chain id {} matches commitment", &chain_id);
+    if !provider_config.local_audit {
+        if chain_state.reveal(original_commitment_sequence_number)? != original_commitment {
+            return Err(anyhow!("The root of the generated hash chain for chain id {} does not match the commitment. Are the secret and chain length configured correctly?", &chain_id));
+        } else {
+            tracing::info!("Root of chain id {} matches commitment", &chain_id);
+        }
     }
 
     let monitored_chain_state = MonitoredHashChainState::new(
         Arc::new(chain_state),
         keeper_metrics.clone(),
         chain_id.clone(),
-        *provider,
+        provider_config.address,
     );
 
     let state = BlockchainState {
@@ -310,7 +331,7 @@ async fn setup_chain_state(
         state: Arc::new(monitored_chain_state),
         network_id,
         contract,
-        provider_address: *provider,
+        provider_address: provider_config.address,
         reveal_delay_blocks: chain_config.reveal_delay_blocks,
         confirmed_block_status: chain_config.confirmed_block_status,
     };

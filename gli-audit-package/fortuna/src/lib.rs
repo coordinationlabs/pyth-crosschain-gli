@@ -7,3 +7,4 @@ pub mod history;
 pub mod keeper;
 pub mod serde;
 pub mod state;
+pub mod mock_entropy_contract_impl;

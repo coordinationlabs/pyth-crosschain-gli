@@ -1,18 +1,37 @@
-ARG RUST_VERSION=1.82.0
+# Stage 1: Build the application
+# Use the specific Rust version from the rust-toolchain file for consistency.
+FROM rust:1.82.0 as builder
 
-FROM rust:${RUST_VERSION} AS build
-
-# Build
+# Set the base working directory.
 WORKDIR /src
-COPY apps/fortuna apps/fortuna
-COPY pythnet pythnet
-COPY target_chains/ethereum/entropy_sdk/solidity/abis target_chains/ethereum/entropy_sdk/solidity/abis
 
-WORKDIR /src/apps/fortuna
+# Copy the required source directories into the container,
+# preserving the project's directory structure which is essential
+# for the relative path dependencies in Cargo.toml to resolve correctly.
+COPY ./gli-audit-package /src/gli-audit-package
+COPY ./project-source /src/project-source
 
-RUN --mount=type=cache,target=/root/.cargo/registry SQLX_OFFLINE=true cargo build --release
+# Set the working directory to our specific application.
+WORKDIR /src/gli-audit-package/fortuna
 
+# Build the Fortuna binary.
+# The --mount flag caches dependencies to speed up subsequent builds.
+# The SQLX_OFFLINE=true flag is crucial for building without a database connection.
+RUN --mount=type=cache,target=/usr/local/cargo/registry \
+    SQLX_OFFLINE=true cargo build --release --bin fortuna
 
-FROM rust:${RUST_VERSION}
-# Copy artifacts from other images
-COPY --from=build /src/apps/fortuna/target/release/fortuna /usr/local/bin/
+# Stage 2: Create the final runtime image
+# We use the same Rust image as the builder to ensure that all necessary
+# system-level shared libraries (like libssl) are present.
+FROM rust:1.82.0
+
+# Copy the compiled Fortuna binary from the builder stage.
+COPY --from=builder /src/gli-audit-package/fortuna/target/release/fortuna /usr/local/bin/
+
+# Expose the port the server listens on.
+EXPOSE 8080
+
+# Set the final working directory and the command to run the application.
+# The config file is expected to be mounted at /app/config.yaml at runtime.
+WORKDIR /app
+CMD ["fortuna", "run", "--config", "config.yaml", "--rpc-listen-addr", "0.0.0.0:8080"]

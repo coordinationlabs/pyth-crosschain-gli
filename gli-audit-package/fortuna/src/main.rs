@@ -16,15 +16,17 @@ use {
 #[tokio::main]
 #[tracing::instrument]
 async fn main() -> Result<()> {
-    // Initialize a Tracing Subscriber
+    println!("[DEBUG] Entered main function. Initializing logger...");
+    // Initialize a Tracing Subscriber for server-side logging.
+    // This is configured for a container environment by disabling color codes (ANSI)
+    // and relying on the RUST_LOG environment variable for log-level control.
     tracing::subscriber::set_global_default(
         tracing_subscriber::fmt()
-            .compact()
             .with_file(false)
             .with_line_number(true)
             .with_thread_ids(true)
             .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
-            .with_ansi(std::io::stderr().is_terminal())
+            .with_ansi(false)
             .finish(),
     )?;
 

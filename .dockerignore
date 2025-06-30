@@ -1,0 +1,27 @@
+# Ignore build artifacts
+target/
+**/target/
+
+# Ignore git history
+.git/
+
+# Ignore IDE settings
+.idea/
+.vscode/
+
+# Ignore local secrets and environment files
+.env
+*.env.local
+
+# Ignore caches and databases
+.sqlx/
+fortuna.db
+*.db
+
+# Ignore Nix development environment files
+.direnv/
+result
+flake.lock
+
+# Ignore OS-specific files
+.DS_Store 

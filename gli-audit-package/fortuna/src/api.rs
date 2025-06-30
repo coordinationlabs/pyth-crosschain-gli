@@ -22,13 +22,18 @@ use {
     tokio::sync::RwLock,
     url::Url,
 };
-pub use {chain_ids::*, explorer::*, index::*, live::*, metrics::*, ready::*, revelation::*};
+pub use {
+    chain_ids::*, commitment::*, explorer::*, index::*, live::*, metrics::*, mock_revelation::*,
+    ready::*, revelation::*,
+};
 
 mod chain_ids;
+mod commitment;
 mod explorer;
 mod index;
 mod live;
 mod metrics;
+mod mock_revelation;
 mod ready;
 mod revelation;
 
@@ -196,10 +201,15 @@ pub fn routes(state: ApiState) -> Router<(), Body> {
         .route("/metrics", get(metrics))
         .route("/ready", get(ready))
         .route("/v1/chains", get(chain_ids))
+        .route("/v1/commitment/:chain_id", get(commitment))
         .route("/v1/logs", get(explorer))
         .route(
             "/v1/chains/:chain_id/revelations/:sequence",
             get(revelation),
+        )
+        .route(
+            "/v1/chains/:chain_id/mock_revelation/:sequence",
+            get(mock_revelation),
         )
         .with_state(state)
 }

@@ -327,6 +327,11 @@ pub struct ProviderConfig {
     /// The address of the fee manager for the provider. Set this value to the keeper wallet address to
     /// enable keeper balance top-ups.
     pub fee_manager: Option<Address>,
+
+    /// A flag to indicate that the server is running in a local audit environment.
+    /// This will skip on-chain checks and use the local configuration to generate the hash chain.
+    #[serde(default)]
+    pub local_audit: bool,
 }
 
 fn default_chain_sample_interval() -> u64 {

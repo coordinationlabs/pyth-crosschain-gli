@@ -168,7 +168,7 @@ impl HashChainState {
 }
 
 pub struct MonitoredHashChainState {
-    hash_chain_state: Arc<HashChainState>,
+    pub hash_chain_state: Arc<HashChainState>,
     metrics: Arc<KeeperMetrics>,
     account_label: AccountLabel,
 }
