@@ -1,5 +1,5 @@
 chains:
-  lightlink_pegasus:
+  ethereum:
     geth_rpc_addr: https://replicator.pegasus.lightlink.io/rpc/v1
     contract_addr: 0x8250f4aF4B972684F7b336503E2D6dFeDeB1487a
 
@@ -47,29 +47,23 @@ chains:
     # blocks after 5 blocks, then again after 10 blocks, and finally after 20 blocks.
     block_delays: [5, 10, 20]
 
-    # Historical commitments -- delete this block for local development purposes
-    commitments:
-      # prettier-ignore
-      - seed: [219,125,217,197,234,88,208,120,21,181,172,143,239,102,41,233,167,212,237,106,37,255,184,165,238,121,230,155,116,158,173,48]
-        chain_length: 10000
-        original_commitment_sequence_number: 104
 provider:
   uri: http://localhost:8080/
   chain_length: 100000
   chain_sample_interval: 10
 
   # An ethereum wallet address and private key. Generate with `cast wallet new`
-  address: 0xADDRESS
+  address: "0x0000000000000000000000000000000000000000"
   private_key:
     # For local development, you can hardcode the private key here
-    value: 0xabcd
+    value: "0x0000000000000000000000000000000000000000000000000000000000000001"
     # For production, you can store the private key in a file.
     # file: provider-key.txt
   # A 32 byte random value in hexadecimal
   # Generate with `openssl rand -hex 32`
   secret:
     # For local development, you can hardcode the value here
-    value: abcd
+    value: "0x0102030405060708010203040506070801020304050607080102030405060708"
     # For production, you can store the private key in a file.
     # file: secret.txt
 
@@ -88,6 +82,6 @@ keeper:
   # The keeper private key can be omitted to run the webservice without the keeper.
   private_key:
     # For local development, you can hardcode the private key here
-    value: 0xabcd
+    value: "0x0000000000000000000000000000000000000000000000000000000000000002"
     # For production, you can store the private key in a file.
     # file: keeper-key.txt

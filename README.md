@@ -18,7 +18,50 @@ See the Server Modifications for Testing section for more detailed discussion of
 
 The audit process uses Docker to ensure a clean, consistent, and easy-to-run test environment. It involves running the test-enabled server in a Docker container and then running a `live_client` against it from your local machine.
 
-### Step 1: Build the Docker Image
+### Prerequisites: Install Rust and Cargo
+
+Before running the audit, you need to have Rust and Cargo installed on your system. The `live_client` is a Rust application that requires Cargo to build and run.
+
+To install Rust and Cargo, visit [https://rustup.rs/](https://rustup.rs/) and follow the installation instructions for your operating system. On most systems, you can install Rust by running:
+
+```bash
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+```
+
+After installation, restart your terminal or run `source ~/.cargo/env` to update your PATH.
+
+You can verify the installation by running:
+```bash
+cargo --version
+```
+
+### Step 1: Configure the Audit Settings
+
+Before building the Docker image, you need to set up the configuration file for the audit.
+
+1. **Copy the sample configuration file:**
+   ```bash
+   cp gli-audit-package/fortuna/config.sample.yaml gli-audit-package/fortuna/config.yaml
+   ```
+
+2. **Edit the configuration for audit mode:**
+   Open `gli-audit-package/fortuna/config.yaml` and ensure the following settings are configured:
+
+   - **Set `local_audit: true`** in the `provider` section. This is required to run the server in audit mode:
+     ```yaml
+     provider:
+       local_audit: true
+     ```
+
+   - **Set an appropriate `chain_length`** in the `provider` section. This should be large enough to source all necessary commitments for your audit. Additionally, you could parallelize this process and make smaller length chains created from the same secret:
+     ```yaml
+     provider:
+       chain_length: 100000
+     ```
+
+   The sample configuration already has these values set correctly, but it's important to verify them before proceeding.
+
+### Step 2: Build the Docker Image
 
 The `Dockerfile` included in this package (`fortuna/Dockerfile`) is designed to build the Fortuna server and all its dependencies.
 
@@ -30,7 +73,7 @@ docker build -t fortuna-audit -f gli-audit-package/fortuna/Dockerfile .
 *   **`-f`**: Specifies the path to the correct `Dockerfile`.
 *   **`.`**: Sets the build context to the repository root, which is required for the `Dockerfile` to copy all necessary source code.
 
-### Step 2: Run the Fortuna Server Container
+### Step 3: Run the Fortuna Server Container
 
 Once the image is built, run it in a container. This command will start the server in the background and mount the local `config.yaml` file into the container.
 
@@ -46,7 +89,7 @@ docker run -d -p 8080:8080 --name fortuna-server \
 
 You can check that the server is running with `docker ps`.
 
-### Step 3: Run the Live Audit Client
+### Step 4: Run the Live Audit Client
 
 With the server running in Docker, you can now run the `live_client`. This client will connect to the server, request random numbers, and perform a full cryptographic verification of the server's responses.
 
@@ -61,7 +104,7 @@ SQLX_OFFLINE=true cargo run --release --bin live_client -- --num-samples 100 --c
 *   **`SQLX_OFFLINE=true`**: Is required to build the client without needing a live database connection.
 *   **`--server-url`**: If your server is not on `localhost:8080`, you can add this flag.
 
-### Step 4: Verify Output and Cleanup
+### Step 5: Verify Output and Cleanup
 
 The client will print its progress for each of the 100 samples. Upon successful completion, you will see the message:
 
