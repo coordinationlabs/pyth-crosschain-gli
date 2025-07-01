@@ -2,7 +2,7 @@
 
 This package contains tools to audit the `fortuna` entropy provider protocol, designed for certification by the Gaming Laboratories International (GLI).
 
-The audit is performed via a **Live Black-Box Test**. This involves running a test-enabled instance of the `fortuna` server (included in this package) and using the provided `live_client` to verify its responses. This provides a complete, end-to-end integration test of the server's core cryptographic logic over a network interface, without requiring live blockchain transactions.
+The audit, found in `gli-audit-package`, is performed via a **Live Black-Box Test**. This involves running a test-enabled instance of the `fortuna` server (included in this package) and using the provided `live_client` to verify its responses. This provides a complete, end-to-end integration test of the server's core cryptographic logic over a network interface, without requiring live blockchain transactions.
 
 ## Test-Enabled Server
 
@@ -15,6 +15,8 @@ The `fortuna` server within this audit package has been modified for testing pur
 See the Server Modifications for Testing section for more detailed discussion of modifications.
 
 ## How to Run the Audit
+
+All code for the audit is in the `gli-audit-package` folder. The `project-source` folder is included as a reference to confirm that any modifications made for the test-enabled server do not change random number generation functionality. The unmodified code for the random number servercan be found under `project-source/apps/fortuna`.
 
 The audit process uses Docker to ensure a clean, consistent, and easy-to-run test environment. It involves running the test-enabled server in a Docker container and then running a `live_client` against it from your local machine.
 
@@ -167,4 +169,4 @@ These changes ensure that the `live_client` is auditing a fresh, predictable ins
 
 ## Technical Explainer
 
-For a detailed technical explanation of how the verification logic in the client maps to the real smart contract, please see `fortuna/smart-contract-explainer.md`. 
+For a detailed technical explanation of how the verification logic in the client maps to the real smart contract, please see `gli-audit-package/smart-contract-explainer.md`. 
