@@ -169,4 +169,4 @@ These changes ensure that the `live_client` is auditing a fresh, predictable ins
 
 ## Technical Explainer
 
-For a detailed technical explanation of how the verification logic in the client maps to the real smart contract, please see `gli-audit-package/smart-contract-explainer.md`. 
+For a detailed technical explanation of how the verification logic in the client maps to the real smart contract, please see `smart-contract-explainer.md`. 
